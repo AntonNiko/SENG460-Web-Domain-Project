@@ -25,25 +25,31 @@ if echo "$WHOIS_OUTPUT" | grep "No match for domain" > /dev/null; then
 fi
 echo "Successfully executed whois on $DOMAIN_NAME"
 
-# Call dig on the domain name
-DIG_OUTPUT=$(dig $DOMAIN_NAME)
+# Call dig on the domain name. We accomodate if it's an IP address.
+if echo "$DOMAIN_NAME" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' > /dev/null; then
+    DIG_OUTPUT=$(dig -x $DOMAIN_NAME)
+else 
+    DIG_OUTPUT=$(dig $DOMAIN_NAME)
+fi
+echo "Successfully executed dig on $DOMAIN_NAME"
+
 # If we see that no match were found (i.e. no answer), then exit, UNLESS
 # the DOMAIN_NAME is an IP address. In that case, we do not expect an answer,
 # so continue
 if echo "$DIG_OUTPUT" | grep "ANSWER: 0" > /dev/null; then
-    echo "No answer received for dig $DOMAIN_NAME."
-
-    if ! echo "$DOMAIN_NAME" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' > /dev/null; then
-        echo "Since provided name is not an IP address, exiting."
-        exit 0
-    fi
-    echo "Domain name is an IP address, so continue."
+    echo "Warning: no answer received for dig $DOMAIN_NAME."
 fi
-echo "Successfully executed dig on $DOMAIN_NAME"
 
+###########################################################################
+# Below we filter and append the output file with all desired information.
+###########################################################################
+OUTPUT_FILENAME="output_$DOMAIN_NAME.txt"
 
-##################################################################
-# Below we filter and build the file with all desired information.
-##################################################################
+# Add header to file
+echo -e "# SENG 460 - Spring 2022 \n# Output of lookup of website: $DOMAIN_NAME\n" > $OUTPUT_FILENAME
+
+# Output registrar abuse
+echo "$WHOIS_OUTPUT" | sed -n '/abuse/ p' | >> $OUTPUT_FILENAME
+
 
 exit 0
