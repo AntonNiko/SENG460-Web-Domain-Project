@@ -48,8 +48,19 @@ OUTPUT_FILENAME="output_$DOMAIN_NAME.txt"
 # Add header to file
 echo -e "# SENG 460 - Spring 2022 \n# Output of lookup of website: $DOMAIN_NAME\n" > $OUTPUT_FILENAME
 
-# Output registrar abuse
-echo "$WHOIS_OUTPUT" | sed -n '/abuse/ p' | >> $OUTPUT_FILENAME
+# Output registrar abuse email
+# TODO: Fix formatting and filtering
+echo "Email the following registrar email address to report abuse: " >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/abuse/ Ip' | sed -n '/email/ Ip' | cut -d: -f2 >> $OUTPUT_FILENAME
+
+# Output general registrar information
+echo "The website's corresponding registrar information is shown below: " >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/registrar/ Ip' >> $OUTPUT_FILENAME
+
+# Get DNS hostname information
+echo "The query for $DOMAIN_NAME returns the following IP/Domain name: " >> $OUTPUT_FILENAME
+
+
 
 
 exit 0
