@@ -82,7 +82,7 @@ fi
 # If we input domain name, then output the DNS servers of that domain.
 if [[ "$IS_IP_ADDRESS" -eq "0" ]]; then
     echo -e "\n# DNS Servers for address $ADDRESS:" >> $OUTPUT_FILENAME
-    echo "$WHOIS_OUTPUT" | sed -n '/Name Server:/ Ip' >> $OUTPUT_FILENAME
+    echo "$WHOIS_OUTPUT" | sed -n '/Name Server:/ Ip' | xargs >> $OUTPUT_FILENAME
 fi
 
 echo -e "\n# Results of ping operation on address:" >> $OUTPUT_FILENAME
