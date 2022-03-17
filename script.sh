@@ -1,6 +1,7 @@
 #!/bin/bash
 # This script must be run with sudo privileges to install required dependencies.
 # e.g.: sudo ./script.sh uvic.ca
+# Note: xargs here is used to remove leading whitespace from output.
 
 # Check that domain name / IP address argument provided.
 if [[ "$1" == "" || $# -lt 1 ]]; then
@@ -34,13 +35,10 @@ else
     IS_IP_ADDRESS=0
     DIG_OUTPUT=$(dig $ADDRESS)
     DIG_ANSWER_OUTPUT=$(dig +noall +answer $ADDRESS)
-    DIG_NS_OUTPUT=$(dig ns +noall +answer $ADDRESS)
 fi
 echo "Successfully executed dig on $ADDRESS"
 
-# If we see that no match were found (i.e. no answer), then exit, UNLESS
-# the ADDRESS is an IP address. In that case, we do not expect an answer,
-# so continue
+# If we see that no match were found (i.e. no answer), then exit.
 if echo "$DIG_OUTPUT" | grep "ANSWER: 0" > /dev/null; then
     echo "Warning: no answer received for dig $ADDRESS."
 fi
@@ -51,48 +49,55 @@ fi
 OUTPUT_FILENAME="output_$ADDRESS.txt"
 
 # Add header to file
-echo -e "# SENG 460 - Spring 2022 \n# Output of lookup for address: $ADDRESS\n" > $OUTPUT_FILENAME
+echo -e "# SENG 460 - Spring 2022 \n# Output of lookup for address: $ADDRESS" > $OUTPUT_FILENAME
 
 # Output registrar abuse email
-# TODO: Fix formatting and filtering
-echo "Email the following registrar email address to report abuse: " >> $OUTPUT_FILENAME
-echo "$WHOIS_OUTPUT" | sed -n '/abuse/ Ip' | sed -n '/email/ Ip' | cut -d: -f2 >> $OUTPUT_FILENAME
+echo -e "\n# Email the following registrar email address to report abuse: " >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/abuse/ Ip' | sed -n '/email/ Ip' | cut -d: -f2 | xargs >> $OUTPUT_FILENAME
+
+# Output registrar abuse phone
+echo -e "\n# Phone the following registrar phone number to report abuse: " >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/abuse/ Ip' | sed -n '/phone/ Ip' | cut -d: -f2 | xargs >> $OUTPUT_FILENAME
 
 # Output general registrar information
-echo "The website's corresponding registrar information is shown below: " >> $OUTPUT_FILENAME
+echo -e "\n# The website's corresponding registrar information is shown below: " >> $OUTPUT_FILENAME
 echo "$WHOIS_OUTPUT" | sed -n '/Registrar URL/ Ip' >> $OUTPUT_FILENAME
 echo "$WHOIS_OUTPUT" | sed -n '/Registrar:/ Ip' >> $OUTPUT_FILENAME
 echo "$WHOIS_OUTPUT" | sed -n '/Registry Domain ID:/ Ip' >> $OUTPUT_FILENAME
-#echo "$WHOIS_OUTPUT" | sed -n '/registrar/ Ip' >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/Registrar IANA ID:/ Ip' >> $OUTPUT_FILENAME
 
 # Get DNS hostname information
 if [[ "$IS_IP_ADDRESS" -eq "1" ]]; then
-    echo -e "\n\nThe query for $ADDRESS returns the following Domain name(s): " >> $OUTPUT_FILENAME
+    echo -e "\nThe query for $ADDRESS returns the following Domain name(s): " >> $OUTPUT_FILENAME
     echo "$DIG_ANSWER_OUTPUT" | cut -d$'\t' -f3 >> $OUTPUT_FILENAME
 else
-    echo -e "\n\nThe query for $ADDRESS returns the following IP address(es): " >> $OUTPUT_FILENAME
+    echo -e "\nThe query for $ADDRESS returns the following IP address(es): " >> $OUTPUT_FILENAME
     echo "$DIG_ANSWER_OUTPUT" | cut -d$'\t' -f6 >> $OUTPUT_FILENAME
 fi
 
 # If we input domain name, then output the DNS servers of that domain.
 if [[ "$IS_IP_ADDRESS" -eq "0" ]]; then
-    echo -e "\nDNS Servers for address $ADDRESS:" >> $OUTPUT_FILENAME
-    echo "$DIG_NS_OUTPUT" | cut -d$'\t' -f6 >> $OUTPUT_FILENAME
+    echo -e "\n# DNS Servers for address $ADDRESS:" >> $OUTPUT_FILENAME
+    echo "$WHOIS_OUTPUT" | sed -n '/Name Server:/ Ip' >> $OUTPUT_FILENAME
 fi
 
-# Must provide: Domain Registrar, Web hosting provided, DNS hosting provider, network provider.
+# Must provide: Domain Registrar, Web hosting provider, DNS hosting provider, network provider.
 
-echo "Results of ping operation on address:" >> $OUTPUT_FILENAME
+echo -e "\n# Results of ping operation on address:" >> $OUTPUT_FILENAME
 # Ping the destination 4 times to determine average RTT
 PING_OUTPUT=$(ping -c 4 $ADDRESS)
 
 # Extract results and append relevant information to file, such as minimum, maximum, and average RTT.
 PING_STATS=$(echo "$PING_OUTPUT" | sed -n '/rtt/ p')
 echo "Minimum RTT (ms)" >> $OUTPUT_FILENAME
-echo $PING_STATS | cut -d/ -f4 | cut -d= -f2 >> $OUTPUT_FILENAME
+echo $PING_STATS | cut -d/ -f4 | cut -d= -f2 | xargs >> $OUTPUT_FILENAME
 echo "Maximum RTT (ms)" >> $OUTPUT_FILENAME
-echo $PING_STATS | cut -d/ -f5 >> $OUTPUT_FILENAME
+echo $PING_STATS | cut -d/ -f5 | xargs >> $OUTPUT_FILENAME
 echo "Average RTT (ms)" >> $OUTPUT_FILENAME
-echo $PING_STATS | cut -d/ -f6 >> $OUTPUT_FILENAME
+echo $PING_STATS | cut -d/ -f6 | xargs >> $OUTPUT_FILENAME
+
+# Present the supposed registrant information which we may not trust.
+echo -e "\n# The registrant's information is shown below. Be careful, this information may not be accurate!" >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/Registrant/ Ip' >> $OUTPUT_FILENAME
 
 exit 0
