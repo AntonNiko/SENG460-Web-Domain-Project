@@ -1,6 +1,7 @@
 #!/bin/bash
 # This script must be run with sudo privileges to install required dependencies.
 # e.g.: sudo ./script.sh uvic.ca
+# If whois is already installed, do not need sudo privileges to run.
 # Note: xargs here is used to remove leading whitespace from output.
 
 # Check that domain name / IP address argument provided.
@@ -61,17 +62,17 @@ echo "$WHOIS_OUTPUT" | sed -n '/abuse/ Ip' | sed -n '/phone/ Ip' | cut -d: -f2 |
 
 # Output general registrar information
 echo -e "\n# The website's corresponding registrar information is shown below: " >> $OUTPUT_FILENAME
-echo "$WHOIS_OUTPUT" | sed -n '/Registrar URL/ Ip' >> $OUTPUT_FILENAME
-echo "$WHOIS_OUTPUT" | sed -n '/Registrar:/ Ip' >> $OUTPUT_FILENAME
-echo "$WHOIS_OUTPUT" | sed -n '/Registry Domain ID:/ Ip' >> $OUTPUT_FILENAME
-echo "$WHOIS_OUTPUT" | sed -n '/Registrar IANA ID:/ Ip' >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/Registrar URL/ Ip' | xargs >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/Registrar:/ Ip' | xargs >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/Registry Domain ID:/ Ip' | xargs >> $OUTPUT_FILENAME
+echo "$WHOIS_OUTPUT" | sed -n '/Registrar IANA ID:/ Ip' | xargs >> $OUTPUT_FILENAME
 
 # Get DNS hostname information
 if [[ "$IS_IP_ADDRESS" -eq "1" ]]; then
-    echo -e "\nThe query for $ADDRESS returns the following Domain name(s): " >> $OUTPUT_FILENAME
+    echo -e "\nThe query for $ADDRESS returns the following Domain name(s):" >> $OUTPUT_FILENAME
     echo "$DIG_ANSWER_OUTPUT" | cut -d$'\t' -f3 >> $OUTPUT_FILENAME
 else
-    echo -e "\nThe query for $ADDRESS returns the following IP address(es): " >> $OUTPUT_FILENAME
+    echo -e "\nThe query for $ADDRESS returns the following IP address(es):" >> $OUTPUT_FILENAME
     echo "$DIG_ANSWER_OUTPUT" | cut -d$'\t' -f6 >> $OUTPUT_FILENAME
 fi
 
@@ -96,8 +97,12 @@ echo $PING_STATS | cut -d/ -f5 | xargs >> $OUTPUT_FILENAME
 echo "Average RTT (ms)" >> $OUTPUT_FILENAME
 echo $PING_STATS | cut -d/ -f6 | xargs >> $OUTPUT_FILENAME
 
+# Display the IP address and port of the responding server. This may be useful to pinpoint which DNS server is used for lookup.
+echo -e "\n# DIG command received reply from the following DNS server address & port:" >> $OUTPUT_FILENAME 
+echo "$DIG_OUTPUT" | sed -n '/SERVER:/ Ip' | cut -d: -f2 | xargs >> $OUTPUT_FILENAME
+
 # Present the supposed registrant information which we may not trust.
-echo -e "\n# The registrant's information is shown below. Be careful, this information may not be accurate!" >> $OUTPUT_FILENAME
+echo -e "\n# If the registrant's information is found, it is shown below.\n# Be careful, this information may not be accurate!" >> $OUTPUT_FILENAME
 echo "$WHOIS_OUTPUT" | sed -n '/Registrant/ Ip' >> $OUTPUT_FILENAME
 
 exit 0
