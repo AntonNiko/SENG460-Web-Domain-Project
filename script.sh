@@ -44,6 +44,9 @@ if echo "$DIG_OUTPUT" | grep "ANSWER: 0" > /dev/null; then
     echo "Warning: no answer received for dig $ADDRESS."
 fi
 
+# Run nslookup to get more information about the DNS server.
+NS_LOOKUP_OUTPUT=$(nslookup $ADDRESS)
+
 ###########################################################################
 # Below we filter and append the output file with all desired information.
 ###########################################################################
@@ -82,8 +85,6 @@ if [[ "$IS_IP_ADDRESS" -eq "0" ]]; then
     echo "$WHOIS_OUTPUT" | sed -n '/Name Server:/ Ip' >> $OUTPUT_FILENAME
 fi
 
-# Must provide: Domain Registrar, Web hosting provider, DNS hosting provider, network provider.
-
 echo -e "\n# Results of ping operation on address:" >> $OUTPUT_FILENAME
 # Ping the destination 4 times to determine average RTT
 PING_OUTPUT=$(ping -c 4 $ADDRESS)
@@ -100,6 +101,10 @@ echo $PING_STATS | cut -d/ -f6 | xargs >> $OUTPUT_FILENAME
 # Display the IP address and port of the responding server. This may be useful to pinpoint which DNS server is used for lookup.
 echo -e "\n# DIG command received reply from the following DNS server address & port:" >> $OUTPUT_FILENAME 
 echo "$DIG_OUTPUT" | sed -n '/SERVER:/ Ip' | cut -d: -f2 | xargs >> $OUTPUT_FILENAME
+
+# Display nslookup output
+echo -e "\n# NSLOOKUP command for $ADDRESS returns the following DNS server(s) information:" >> $OUTPUT_FILENAME
+echo "$NS_LOOKUP_OUTPUT" >> $OUTPUT_FILENAME
 
 # Present the supposed registrant information which we may not trust.
 echo -e "\n# If the registrant's information is found, it is shown below.\n# Be careful, this information may not be accurate!" >> $OUTPUT_FILENAME
